@@ -1,0 +1,101 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wheel-optimizer"
+authors = [{name = "Gyeongjae Choi"}]
+description = "Pluggable post-processing optimizers for Python wheels"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+license = {text = "MIT"}
+requires-python = ">=3.12"
+dependencies = []
+dynamic = ["version"]
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[project.urls]
+Homepage = "https://github.com/pyodide/wheel-optimizer"
+"Bug Tracker" = "https://github.com/pyodide/wheel-optimizer/issues"
+
+[dependency-groups]
+test = [
+    "pytest",
+    "pytest-cov",
+]
+
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.0.0"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "/wheel_optimizer/tests",
+]
+
+[tool.pytest.ini_options]
+addopts = "-vra --strict-markers"
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = ["wheel_optimizer"]
+show_error_codes = true
+warn_unreachable = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
+
+# Strict checks
+warn_unused_configs = true
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_subclassing_any = false
+disallow_untyped_calls = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = false
+no_implicit_reexport = true
+strict_equality = true
+
+[tool.ruff]
+lint.select = [
+    "ASYNC",  # flake8-async
+    "B0",     # bugbear (all B0* checks enabled by default)
+    "B904",   # bugbear (raise ... from err)
+    "B905",   # bugbear (zip() without strict=)
+    "C4",     # flake8-comprehensions
+    "C9",     # mccabe complexity
+    "E",      # pycodestyle
+    "F",      # pyflakes
+    "I",      # isort
+    "PERF",   # perflint
+    "PGH",    # pygrep-hooks
+    "PL",     # pylint
+    "UP",     # pyupgrade
+    "W",      # pycodestyle warnings
+]
+lint.ignore = ["E501", "PLR0912", "PLC0415"]
+target-version = "py312"
+
+[tool.ruff.lint.isort]
+known-first-party = [
+    "wheel_optimizer",
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 31
+
+[tool.ruff.lint.pylint]
+allow-magic-value-types = ["bytes", "int", "str"]
+max-args = 20
+max-branches = 27
+max-returns = 12
+max-statements = 67
