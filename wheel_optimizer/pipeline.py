@@ -12,10 +12,22 @@ logger = logging.getLogger(__name__)
 
 
 def _get_all_optimizers() -> list[WheelOptimizer]:
+    from wheel_optimizer.optimizers.compile_pyc import CompilePycOptimizer
+    from wheel_optimizer.optimizers.remove_assertions import RemoveAssertionsOptimizer
+    from wheel_optimizer.optimizers.remove_comments import RemoveCommentsOptimizer
     from wheel_optimizer.optimizers.remove_docstrings import RemoveDocstringsOptimizer
+    from wheel_optimizer.optimizers.remove_tests import RemoveTestsOptimizer
+    from wheel_optimizer.optimizers.remove_type_annotations import (
+        RemoveTypeAnnotationsOptimizer,
+    )
 
     return [
+        RemoveTestsOptimizer(),
         RemoveDocstringsOptimizer(),
+        RemoveTypeAnnotationsOptimizer(),
+        RemoveAssertionsOptimizer(),
+        RemoveCommentsOptimizer(),
+        CompilePycOptimizer(),
     ]
 
 
