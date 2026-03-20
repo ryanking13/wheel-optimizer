@@ -15,16 +15,26 @@ from pathlib import Path
 
 from wheel_optimizer import OptimizerConfig, OptimizerPipeline
 
-config = OptimizerConfig(remove_docstrings=True)
+config = OptimizerConfig(
+    remove_docstrings=True,
+    remove_type_annotations=True,
+    remove_assertions=True,
+    remove_comments=True,
+)
 pipeline = OptimizerPipeline(config)
 pipeline.run(Path("unpacked-wheel-directory/"))
 ```
 
 ## Available optimizers
 
-| Name | Description | Default |
-|------|-------------|---------|
-| `remove_docstrings` | Strip docstrings from `.py` files | off |
+| Name | Description | Default | Order |
+|------|-------------|---------|-------|
+| `remove_tests` | Remove test directories and files | off | early |
+| `remove_docstrings` | Strip docstrings from `.py` files | off | normal |
+| `remove_type_annotations` | Strip type annotations (preserves dataclass/NamedTuple/TypedDict/Protocol fields) | off | normal |
+| `remove_assertions` | Strip `assert` statements | off | normal |
+| `remove_comments` | Strip `#` comments | off | normal |
+| `compile_pyc` | Compile `.py` → `.pyc` and remove originals | off | late |
 
 ## Writing a custom optimizer
 
@@ -34,9 +44,9 @@ from pathlib import Path
 from wheel_optimizer import WheelOptimizer
 
 
-class RemoveCommentsOptimizer(WheelOptimizer):
-    name = "remove_comments"
-    description = "Strip comments from .py files"
+class MyOptimizer(WheelOptimizer):
+    name = "my_optimizer"
+    description = "My custom optimization"
     default_enabled = False
 
     def should_process(self, file_path: Path) -> bool:
