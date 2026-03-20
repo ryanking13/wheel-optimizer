@@ -4,7 +4,7 @@ from importlib import metadata as importlib_metadata
 from pathlib import Path
 
 project = "wheel-optimizer"
-copyright = "2025, Pyodide contributors"
+copyright = "2026, Pyodide contributors"
 
 # -- General configuration ---------------------------------------------------
 
@@ -17,7 +17,7 @@ extensions = [
 ]
 
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3.12", None),
+    "python": ("https://docs.python.org/3.13", None),
 }
 
 templates_path = ["_templates"]

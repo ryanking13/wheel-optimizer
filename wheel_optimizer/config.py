@@ -11,4 +11,6 @@ class OptimizerConfig:
     remove_tests: bool = False
     remove_typestubs: bool = False
     remove_pycache: bool = False
+    remove_c_source: bool = False
+    remove_cython_source: bool = False
     compile_pyc: bool = False
