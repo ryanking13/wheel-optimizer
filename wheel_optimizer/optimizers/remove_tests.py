@@ -8,8 +8,6 @@ _TEST_DIR_NAMES = frozenset(
     {
         "test",
         "tests",
-        "testing",
-        "test_suite",
     }
 )
 
@@ -46,11 +44,20 @@ class RemoveTestsOptimizer(WheelOptimizer):
     def process_file(self, full_path: Path) -> None:
         if not full_path.is_file():
             return
-        if full_path.suffix != ".py":
-            return
-        if not _has_test_signals(full_path):
-            return
-        full_path.unlink()
+
+        if full_path.suffix == ".py":
+            if not _has_test_signals(full_path):
+                return
+            full_path.unlink()
+        elif _in_test_directory(full_path):
+            full_path.unlink()
+
+
+def _in_test_directory(file_path: Path) -> bool:
+    for part in file_path.parts[:-1]:
+        if part.lower() in _TEST_DIR_NAMES:
+            return True
+    return False
 
 
 def _has_test_naming(file_path: Path) -> bool:

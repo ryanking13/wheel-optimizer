@@ -11,8 +11,10 @@ class TestNamingDetection:
     def test_test_directory(self):
         assert _has_test_naming(Path("tests/test_foo.py")) is True
         assert _has_test_naming(Path("test/something.py")) is True
-        assert _has_test_naming(Path("testing/util.py")) is True
-        assert _has_test_naming(Path("test_suite/run.py")) is True
+
+    def test_ambiguous_dirs_not_matched(self):
+        assert _has_test_naming(Path("testing/util.py")) is False
+        assert _has_test_naming(Path("test_suite/run.py")) is False
 
     def test_nested_test_directory(self):
         assert _has_test_naming(Path("pkg/tests/conftest.py")) is True
@@ -136,7 +138,7 @@ class TestProcessFile:
 
         assert init.exists()
 
-    def test_keeps_non_py_files(self, tmp_path: Path):
+    def test_keeps_non_py_outside_test_dir(self, tmp_path: Path):
         f = tmp_path / "test_data.json"
         f.write_text('{"key": "value"}')
 
@@ -144,6 +146,39 @@ class TestProcessFile:
         opt.process_file(f)
 
         assert f.exists()
+
+    def test_removes_non_py_inside_test_dir(self, tmp_path: Path):
+        test_dir = tmp_path / "tests"
+        test_dir.mkdir()
+        data = test_dir / "fixture.csv"
+        data.write_text("a,b\n1,2\n")
+
+        opt = RemoveTestsOptimizer()
+        opt.process_file(data)
+
+        assert not data.exists()
+
+    def test_removes_json_inside_test_dir(self, tmp_path: Path):
+        test_dir = tmp_path / "tests"
+        test_dir.mkdir()
+        data = test_dir / "expected.json"
+        data.write_text('{"result": 42}')
+
+        opt = RemoveTestsOptimizer()
+        opt.process_file(data)
+
+        assert not data.exists()
+
+    def test_removes_data_in_nested_test_dir(self, tmp_path: Path):
+        fixtures = tmp_path / "tests" / "fixtures"
+        fixtures.mkdir(parents=True)
+        data = fixtures / "sample.dat"
+        data.write_bytes(b"\x00" * 100)
+
+        opt = RemoveTestsOptimizer()
+        opt.process_file(data)
+
+        assert not data.exists()
 
     def test_keeps_conftest_without_pytest(self, tmp_path: Path):
         f = tmp_path / "conftest.py"
@@ -234,7 +269,7 @@ class TestEndToEnd:
         OptimizerPipeline(config).run(tmp_path)
 
         assert not (test_dir / "test_foo.py").exists()
+        assert not (test_dir / "fixture.json").exists()
         assert (test_dir / "__init__.py").exists()
         assert (test_dir / "helpers.py").exists()
-        assert (test_dir / "fixture.json").exists()
         assert (pkg_dir / "core.py").exists()
