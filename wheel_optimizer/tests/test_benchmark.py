@@ -23,7 +23,7 @@ from wheel_optimizer.pipeline import OptimizerPipeline
 BENCHMARK_WHEELS: list[dict[str, str]] = [
     {"spec": "attrs>=25", "import_name": "attr"},
     {"spec": "rich>=14", "import_name": "rich"},
-    {"spec": "beautifulsoup4>=4.13", "import_name": "bs4"},
+    {"spec": "soupsieve>=2.6", "import_name": "soupsieve"},
     {"spec": "markupsafe>=3", "import_name": "markupsafe"},
     {"spec": "charset-normalizer>=3.4", "import_name": "charset_normalizer"},
     {"spec": "certifi>=2025", "import_name": "certifi"},
