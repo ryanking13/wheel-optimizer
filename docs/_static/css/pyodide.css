@@ -1,0 +1,16 @@
+/* Don't make code smaller than other text */
+code {
+  font-size: 100% !important;
+}
+
+/* Display "async", "class" prefixes and parameters in upright style not italic */
+.sig-param,
+.property {
+  font-style: normal;
+}
+
+code.literal {
+  background-color: unset;
+  border: unset;
+  padding: 0.1rem;
+}
