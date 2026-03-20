@@ -47,7 +47,10 @@ exclude = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "-vra --strict-markers"
+addopts = "-vra --strict-markers -m 'not benchmark'"
+markers = [
+    "benchmark: integration benchmarks against real PyPI wheels (deselected by default)",
+]
 
 [tool.mypy]
 python_version = "3.12"
