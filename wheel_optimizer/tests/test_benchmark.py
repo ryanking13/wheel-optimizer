@@ -6,13 +6,13 @@ Skipped by default in normal test runs.
 
 from __future__ import annotations
 
-import importlib
+import dataclasses
 import os
 import shutil
 import subprocess
 import sys
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from pathlib import Path
 
 import pytest
@@ -31,31 +31,33 @@ BENCHMARK_WHEELS: list[dict[str, str]] = [
     {"spec": "packaging>=25", "import_name": "packaging"},
     {"spec": "pygments>=2.19", "import_name": "pygments"},
     {"spec": "idna>=3.10", "import_name": "idna"},
+    {"spec": "numpy>=2.2", "import_name": "numpy"},
+    {"spec": "pandas>=2.2", "import_name": "pandas"},
+    {"spec": "scipy>=1.15", "import_name": "scipy"},
+    {"spec": "python-dateutil>=2.9", "import_name": "dateutil"},
+    {"spec": "pytz>=2025.1", "import_name": "pytz"},
+    {"spec": "six>=1.17", "import_name": "six"},
+    {"spec": "tzdata>=2025.1", "import_name": "tzdata"},
 ]
 
-OPTIMIZER_CONFIG = OptimizerConfig(
-    remove_docstrings=True,
-    remove_type_annotations=True,
-    remove_assertions=True,
-    remove_comments=True,
-    remove_tests=True,
-    remove_typestubs=True,
-    remove_pycache=True,
-    remove_c_source=True,
-    remove_cython_source=True,
-)
+_OPTIMIZER_FIELDS = [
+    f.name
+    for f in fields(OptimizerConfig)
+    if f.name not in ("disable_all", "compile_pyc")
+]
 
 
 @dataclass
-class BenchmarkResult:
+class WheelResult:
     name: str
     original_bytes: int
-    optimized_bytes: int
+    combined_bytes: int
+    per_optimizer: dict[str, int]
     import_ok: bool
 
     @property
     def saved_bytes(self) -> int:
-        return self.original_bytes - self.optimized_bytes
+        return self.original_bytes - self.combined_bytes
 
     @property
     def saved_pct(self) -> float:
@@ -111,72 +113,87 @@ def _unpack_wheel(whl: Path, dest: Path) -> Path:
     return dest
 
 
-def _try_import(wheel_dir: Path, import_name: str) -> bool:
-    pkg_dirs = [
-        d
-        for d in wheel_dir.iterdir()
-        if d.is_dir() and not d.name.endswith(".dist-info")
-    ]
-    if not pkg_dirs:
-        return False
+def _try_import(
+    wheel_dir: Path, import_name: str, extra_paths: list[Path] | None = None
+) -> bool:
+    paths = [str(wheel_dir)]
+    if extra_paths:
+        paths.extend(str(p) for p in extra_paths if p != wheel_dir)
 
-    saved_path = sys.path[:]
-    saved_modules = {
-        k: v
-        for k, v in sys.modules.items()
-        if k == import_name or k.startswith(import_name + ".")
-    }
-
-    try:
-        for k in saved_modules:
-            del sys.modules[k]
-        sys.path.insert(0, str(wheel_dir))
-        importlib.import_module(import_name)
-        return True
-    except Exception:
-        return False
-    finally:
-        sys.path[:] = saved_path
-        for k in list(sys.modules):
-            if k == import_name or k.startswith(import_name + "."):
-                del sys.modules[k]
-        sys.modules.update(saved_modules)
+    code = f"import sys; sys.path[:0] = {paths!r}; import {import_name}"
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        print(f"Import {import_name} failed: {result.stderr.strip()}")
+    return result.returncode == 0
 
 
-def _generate_markdown(results: list[BenchmarkResult]) -> str:
-    lines = [
-        "## Wheel Optimizer Benchmark Results",
-        "",
-        "| Wheel | Original | Optimized | Saved | % | Import |",
-        "|-------|----------|-----------|-------|---|--------|",
-    ]
+def _run_single_optimizer(source_dir: Path, work_dir: Path, opt_name: str) -> int:
+    if work_dir.exists():
+        shutil.rmtree(work_dir)
+    shutil.copytree(source_dir, work_dir)
+
+    config = OptimizerConfig(**{opt_name: True})
+    OptimizerPipeline(config).run(work_dir)
+    return _dir_size(work_dir)
+
+
+def _generate_markdown(results: list[WheelResult]) -> str:
+    opt_names = _OPTIMIZER_FIELDS
+
+    header = "| Wheel | Original | All Combined | Saved | % |"
+    for name in opt_names:
+        header += f" {name} |"
+    header += " Import |"
+
+    sep = "|-------|----------|--------------|-------|---|"
+    for _ in opt_names:
+        sep += "---|"
+    sep += "--------|"
+
+    lines = ["## Wheel Optimizer Benchmark Results", "", header, sep]
 
     total_original = 0
-    total_optimized = 0
+    total_combined = 0
+    total_per_opt = {n: 0 for n in opt_names}  # noqa: C420
 
     for r in results:
         total_original += r.original_bytes
-        total_optimized += r.optimized_bytes
+        total_combined += r.combined_bytes
         import_status = "pass" if r.import_ok else "FAIL"
-        lines.append(
+
+        row = (
             f"| {r.name} "
             f"| {_format_bytes(r.original_bytes)} "
-            f"| {_format_bytes(r.optimized_bytes)} "
+            f"| {_format_bytes(r.combined_bytes)} "
             f"| {_format_bytes(r.saved_bytes)} "
             f"| {r.saved_pct:.1f}% "
-            f"| {import_status} |"
         )
+        for name in opt_names:
+            saved = r.per_optimizer.get(name, 0)
+            total_per_opt[name] += saved
+            row += f"| {_format_bytes(saved)} " if saved > 0 else "| - "
+        row += f"| {import_status} |"
+        lines.append(row)
 
-    total_saved = total_original - total_optimized
+    total_saved = total_original - total_combined
     total_pct = (total_saved / total_original * 100) if total_original else 0
-    lines.append(
+    total_row = (
         f"| **Total** "
         f"| **{_format_bytes(total_original)}** "
-        f"| **{_format_bytes(total_optimized)}** "
+        f"| **{_format_bytes(total_combined)}** "
         f"| **{_format_bytes(total_saved)}** "
         f"| **{total_pct:.1f}%** "
-        f"| |"
     )
+    for name in opt_names:
+        s = total_per_opt[name]
+        total_row += f"| **{_format_bytes(s)}** " if s > 0 else "| - "
+    total_row += "| |"
+    lines.append(total_row)
 
     lines.append("")
     lines.append(
@@ -189,7 +206,9 @@ def _generate_markdown(results: list[BenchmarkResult]) -> str:
 
 @pytest.mark.benchmark
 def test_benchmark(tmp_path: Path) -> None:
-    results: list[BenchmarkResult] = []
+    optimized_dirs: list[Path] = []
+    wheel_results: list[WheelResult] = []
+    opt_names = _OPTIMIZER_FIELDS
 
     for wheel_info in BENCHMARK_WHEELS:
         spec = wheel_info["spec"]
@@ -205,27 +224,45 @@ def test_benchmark(tmp_path: Path) -> None:
         _unpack_wheel(whl, original_dir)
         original_size = _dir_size(original_dir)
 
-        optimized_dir = tmp_path / "optimized" / name
-        shutil.copytree(original_dir, optimized_dir)
+        per_optimizer: dict[str, int] = {}
+        for opt_name in opt_names:
+            work_dir = tmp_path / "single" / name / opt_name
+            after_size = _run_single_optimizer(original_dir, work_dir, opt_name)
+            saved = original_size - after_size
+            if saved > 0:
+                per_optimizer[opt_name] = saved
 
-        pipeline = OptimizerPipeline(OPTIMIZER_CONFIG)
-        pipeline.run(optimized_dir)
-        optimized_size = _dir_size(optimized_dir)
+        combined_dir = tmp_path / "optimized" / name
+        shutil.copytree(original_dir, combined_dir)
+        all_opts = {n: True for n in opt_names}  # noqa: C420
+        all_config = OptimizerConfig(**all_opts)
+        OptimizerPipeline(all_config).run(combined_dir)
+        combined_size = _dir_size(combined_dir)
 
-        import_ok = _try_import(optimized_dir, import_name)
-
-        results.append(
-            BenchmarkResult(
+        optimized_dirs.append(combined_dir)
+        wheel_results.append(
+            WheelResult(
                 name=name,
                 original_bytes=original_size,
-                optimized_bytes=optimized_size,
-                import_ok=import_ok,
+                combined_bytes=combined_size,
+                per_optimizer=per_optimizer,
+                import_ok=False,
             )
         )
 
         whl.unlink()
 
-    markdown = _generate_markdown(results)
+    for i, wr in enumerate(wheel_results):
+        import_name = BENCHMARK_WHEELS[i]["import_name"]
+        wr_mut = dataclasses.replace(
+            wr,
+            import_ok=_try_import(
+                optimized_dirs[i], import_name, extra_paths=optimized_dirs
+            ),
+        )
+        wheel_results[i] = wr_mut
+
+    markdown = _generate_markdown(wheel_results)
 
     output_path = os.environ.get("BENCHMARK_OUTPUT")
     if output_path:
@@ -233,8 +270,8 @@ def test_benchmark(tmp_path: Path) -> None:
 
     print("\n" + markdown)
 
-    for r in results:
+    for r in wheel_results:
         assert r.import_ok, f"Import failed for {r.name} after optimization"
 
-    total_saved = sum(r.saved_bytes for r in results)
+    total_saved = sum(r.saved_bytes for r in wheel_results)
     assert total_saved > 0, "Expected some size reduction across benchmark wheels"
