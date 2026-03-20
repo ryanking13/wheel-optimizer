@@ -29,7 +29,9 @@ pipeline.run(Path("unpacked-wheel-directory/"))
 
 | Name | Description | Default | Order |
 |------|-------------|---------|-------|
-| `remove_tests` | Remove test directories and files | off | early |
+| `remove_tests` | Remove test files confirmed to contain test framework usage | off | early |
+| `remove_typestubs` | Remove `.pyi` type stub files and `py.typed` markers | off | early |
+| `remove_pycache` | Remove `__pycache__/` contents | off | early |
 | `remove_docstrings` | Strip docstrings from `.py` files | off | normal |
 | `remove_type_annotations` | Strip type annotations (preserves dataclass/NamedTuple/TypedDict/Protocol fields) | off | normal |
 | `remove_assertions` | Strip `assert` statements | off | normal |
