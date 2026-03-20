@@ -16,13 +16,17 @@ def _get_all_optimizers() -> list[WheelOptimizer]:
     from wheel_optimizer.optimizers.remove_assertions import RemoveAssertionsOptimizer
     from wheel_optimizer.optimizers.remove_comments import RemoveCommentsOptimizer
     from wheel_optimizer.optimizers.remove_docstrings import RemoveDocstringsOptimizer
+    from wheel_optimizer.optimizers.remove_pycache import RemovePycacheOptimizer
     from wheel_optimizer.optimizers.remove_tests import RemoveTestsOptimizer
     from wheel_optimizer.optimizers.remove_type_annotations import (
         RemoveTypeAnnotationsOptimizer,
     )
+    from wheel_optimizer.optimizers.remove_typestubs import RemoveTypestubsOptimizer
 
     return [
         RemoveTestsOptimizer(),
+        RemoveTypestubsOptimizer(),
+        RemovePycacheOptimizer(),
         RemoveDocstringsOptimizer(),
         RemoveTypeAnnotationsOptimizer(),
         RemoveAssertionsOptimizer(),

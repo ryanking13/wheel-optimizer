@@ -9,4 +9,6 @@ class OptimizerConfig:
     remove_assertions: bool = False
     remove_comments: bool = False
     remove_tests: bool = False
+    remove_typestubs: bool = False
+    remove_pycache: bool = False
     compile_pyc: bool = False
