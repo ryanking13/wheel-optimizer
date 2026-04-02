@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 def _get_all_optimizers() -> list[WheelOptimizer]:
     from wheel_optimizer.optimizers.compile_pyc import CompilePycOptimizer
+    from wheel_optimizer.optimizers.minify_whitespace import MinifyWhitespaceOptimizer
     from wheel_optimizer.optimizers.remove_assertions import RemoveAssertionsOptimizer
     from wheel_optimizer.optimizers.remove_c_source import RemoveCSourceOptimizer
     from wheel_optimizer.optimizers.remove_comments import RemoveCommentsOptimizer
@@ -37,6 +38,7 @@ def _get_all_optimizers() -> list[WheelOptimizer]:
         RemoveTypeAnnotationsOptimizer(),
         RemoveAssertionsOptimizer(),
         RemoveCommentsOptimizer(),
+        MinifyWhitespaceOptimizer(),
         CompilePycOptimizer(),
     ]
 
