@@ -13,4 +13,5 @@ class OptimizerConfig:
     remove_pycache: bool = False
     remove_c_source: bool = False
     remove_cython_source: bool = False
+    minify_whitespace: bool = False
     compile_pyc: bool = False
