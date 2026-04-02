@@ -64,6 +64,13 @@ source level.
 Strips `#` comments from `.py` files using the `tokenize` module.
 Correctly preserves strings that contain `#` characters and docstrings.
 
+### `minify_whitespace`
+
+Reduces indentation from 4 spaces (or whatever the file uses) to 1 space
+per level and removes blank lines. Uses `tokenize` to detect the indent
+unit, then rewrites line-by-line. String contents are preserved. This is
+analogous to whitespace minification in JavaScript bundlers.
+
 ## Late-stage optimizers (order 900)
 
 These run last, after all source transforms are complete.
