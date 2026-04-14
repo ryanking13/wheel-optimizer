@@ -8,7 +8,7 @@ from wheel_optimizer.base import ORDER_NORMAL, WheelOptimizer
 
 class RemoveDocstringsOptimizer(WheelOptimizer):
     name = "remove_docstrings"
-    description = "Strip docstrings from .py files"
+    description = "Replace docstrings with empty strings in .py files"
     default_enabled = False
     order = ORDER_NORMAL
 
@@ -52,12 +52,11 @@ class _DocstringRemover(ast.NodeTransformer):
         if not isinstance(first.value.value, str):
             return node
 
-        self.changed = True
-        if len(node.body) == 1:
-            node.body[0] = ast.copy_location(ast.Pass(), first)
-        else:
-            node.body.pop(0)
+        if not first.value.value:
+            return node  # Already empty, skip for idempotency
 
+        self.changed = True
+        first.value.value = ""
         return node
 
     def visit_Module(self, node: ast.Module) -> ast.Module:

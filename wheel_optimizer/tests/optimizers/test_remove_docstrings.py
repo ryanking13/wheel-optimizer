@@ -118,24 +118,40 @@ def test_result_is_valid_python():
     compile(result, "<test>", "exec")
 
 
-def test_sole_docstring_class_gets_pass():
+def test_sole_docstring_class_becomes_empty():
     source = 'class Foo:\n    """Only a docstring."""\n'
     result = _remove_docstrings(source)
-    assert "pass" in result
-    compile(result, "<test>", "exec")
+    assert "Only a docstring" not in result
+    assert "pass" not in result
+    ns: dict[str, object] = {}
+    exec(compile(result, "<test>", "exec"), ns)
+    assert ns["Foo"].__doc__ == ""
 
 
-def test_sole_docstring_function_gets_pass():
+def test_sole_docstring_function_becomes_empty():
     source = 'def foo():\n    """Only a docstring."""\n'
     result = _remove_docstrings(source)
-    assert "pass" in result
-    compile(result, "<test>", "exec")
+    assert "Only a docstring" not in result
+    assert "pass" not in result
+    ns: dict[str, object] = {}
+    exec(compile(result, "<test>", "exec"), ns)
+    assert ns["foo"].__doc__ == ""
 
 
 def test_idempotent():
     result1 = _remove_docstrings(SAMPLE_MODULE)
     result2 = _remove_docstrings(result1)
     assert result1 == result2
+
+
+def test_docstrings_become_empty_not_none():
+    result = _remove_docstrings(SAMPLE_MODULE)
+    ns: dict[str, object] = {}
+    exec(compile(result, "<test>", "exec"), ns)
+    assert ns["greet"].__doc__ == ""
+    assert ns["Greeter"].__doc__ == ""
+    assert ns["Greeter"].hello.__doc__ == ""
+    assert ns["async_greet"].__doc__ == ""
 
 
 def test_empty_file():
